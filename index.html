@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Al&Ni Smart Chef - Ultimate V4 (Shuffle & Voice Fix)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Glass Effect Panel */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Loaders & Animations */
+        .loader {
+            border-top-color: #10b981;
+            animation: spinner 1.5s linear infinite;
+        }
+
+        @keyframes spinner {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* YENİ ASİSTAN ARAYÜZÜ STİLLERİ */
+        .cooking-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f172a;
+            /* Slate 900 - Dark Mode */
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+
+        .mic-active-pulse {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 1.5s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* Vision Scan Line */
+        .scan-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scan-line {
+            width: 100%;
+            height: 4px;
+            background: #10b981;
+            animation: scan 1.5s infinite;
+            box-shadow: 0 0 20px #10b981;
+            margin-bottom: 20px;
+            border-radius: 50%;
+        }
+
+        @keyframes scan {
+            0% {
+                transform: translateY(-80px);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(80px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 relative h-screen flex flex-col">
+
+    <!-- Shopping List Modal -->
+    <div id="shoppingModal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden flex justify-end transition-opacity">
+        <div class="bg-white w-full max-w-md h-full shadow-2xl p-6 overflow-y-auto animate-fade-in-right flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-800"><i class="fa-solid fa-cart-shopping text-blue-500"></i>
+                    Alışveriş Listesi</h2>
+                <button onclick="toggleShoppingList()"
+                    class="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-red-500 transition"><i
+                        class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+
+            <!-- Hızlı Ekleme -->
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="shopInput" placeholder="Manuel ürün ekle..."
+                    class="flex-1 bg-slate-50 rounded-xl px-4 py-3 outline-none border focus:border-blue-500 transition">
+                <button onclick="addShopItem()"
+                    class="bg-blue-600 text-white px-5 rounded-xl hover:bg-blue-700 shadow-md"><i
+                        class="fa-solid fa-plus"></i></button>
+            </div>
+
+            <!-- Liste -->
+            <ul id="shoppingListUl" class="space-y-3 flex-1 overflow-y-auto mb-4 pr-1">
+                <!-- JS ile dolacak -->
+            </ul>
+
+            <!-- WhatsApp Paylaşım Alanı -->
+            <div class="bg-green-50 p-5 rounded-3xl border border-green-100 shadow-sm mt-auto">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa-brands fa-whatsapp text-green-600 text-xl"></i>
+                    <label class="text-sm font-bold text-green-800">WhatsApp Notu</label>
+                </div>
+                <textarea id="whatsappNote"
+                    class="w-full bg-white border border-green-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-green-400 resize-none"
+                    rows="2" placeholder="Örn: Gelirken ekmek de al..."></textarea>
+                <button onclick="shareOnWhatsapp()"
+                    class="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transform active:scale-95 transition">
+                    Listeyi Gönder <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PİŞİRME MODU (YENİLENMİŞ ARAYÜZ) -->
+    <div id="cookingMode" class="cooking-overlay hidden">
+        <!-- Progress Bar -->
+        <div class="w-full h-2 bg-slate-800">
+            <div id="progressBar" class="h-full bg-emerald-500 transition-all duration-500" style="width: 0%"></div>
+        </div>
+
+        <!-- Header -->
+        <div class="flex justify-between items-center p-6">
+            <div class="flex flex-col">
+                <span class="text-slate-400 text-xs uppercase tracking-widest font-bold">Asistan Modu</span>
+                <span id="stepCounter" class="text-emerald-400 font-bold text-lg">Adım 1 / 5</span>
+            </div>
+            <button onclick="closeCookingMode()"
+                class="bg-slate-800/50 hover:bg-slate-700 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition border border-slate-700">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Main Content (Center) -->
+        <div class="flex-1 flex flex-col items-center justify-center px-6 text-center overflow-y-auto">
+            <div id="stepContent" class="space-y-6 max-w-2xl animate-[fadeIn_0.5s_ease-out]">
+                <h2 id="stepText" class="text-3xl md:text-5xl font-bold leading-tight text-slate-100">
+                    Tarif Yükleniyor...
+                </h2>
+            </div>
+            <!-- Ses İpucu & Durum -->
+            <div class="mt-12 flex flex-col items-center gap-2">
+                <p id="micStatusText"
+                    class="text-emerald-400 text-xs font-bold uppercase tracking-widest animate-pulse">Dinliyor...</p>
+                <p
+                    class="text-slate-500 text-sm font-medium bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800">
+                    "Sonraki", "Geri", "Tekrar Oku"
+                </p>
+            </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="p-6 pb-10 bg-slate-900/80 backdrop-blur-xl border-t border-slate-800">
+            <div class="max-w-md mx-auto grid grid-cols-3 gap-6 items-center">
+                <!-- Prev Button -->
+                <button onclick="prevStep()"
+                    class="h-16 w-16 md:h-20 md:w-20 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white flex items-center justify-center transition active:scale-90 mx-auto border border-slate-700">
+                    <i class="fa-solid fa-arrow-left text-2xl"></i>
+                </button>
+
+                <!-- Repeat/Mic Button -->
+                <button onclick="speakCurrentStep()"
+                    class="h-24 w-24 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-900/50 mx-auto transition active:scale-95 relative z-10 mic-active-pulse">
+                    <i class="fa-solid fa-microphone-lines text-3xl"></i>
+                </button>
+
+                <!-- Next Button -->
+                <button onclick="nextStep()"
+                    class="h-16 w-16 md:h-20 md:w-20 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white flex items-center justify-center transition active:scale-90 mx-auto border border-slate-700">
+                    <i class="fa-solid fa-arrow-right text-2xl"></i>
+                </button>
+            </div>
+            <div class="flex justify-between text-xs text-slate-500 font-bold uppercase mt-2 max-w-md mx-auto px-4">
+                <span>Geri</span>
+                <span>Tekrarla</span>
+                <span>İleri</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-emerald-600 p-2 rounded-full shadow-md">
+                    <i class="fa-solid fa-hat-chef fa-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight">Al&Ni Smart Chef</h1>
+                    <p class="text-[10px] md:text-xs text-emerald-100 opacity-90 uppercase tracking-wide">Sıfır Atık,
+                        Maksimum Lezzet</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleShoppingList()"
+                    class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition flex items-center gap-2 backdrop-blur-sm border border-white/10 shadow-inner">
+                    <div class="relative">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span id="shopCountBadge"
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden shadow-sm">0</span>
+                    </div>
+                    <span class="hidden md:inline font-bold text-sm">Listem</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Ana İçerik -->
+    <div class="flex-1 overflow-y-auto">
+        <div class="max-w-6xl mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8 pb-32">
+
+            <!-- SOL PANEL: Kiler & Kontroller -->
+            <div class="md:col-span-1 space-y-6">
+
+                <!-- Malzeme Ekleme (Vision & SKT) -->
+                <div class="glass-panel p-6 rounded-3xl shadow-sm relative overflow-hidden">
+                    <!-- Vision Overlay -->
+                    <div id="visionOverlay" class="scan-overlay hidden">
+                        <div class="scan-line"></div>
+                        <i class="fa-solid fa-robot text-4xl text-emerald-600 mb-4 animate-bounce"></i>
+                        <p class="font-bold text-slate-700 text-lg">Görsel Analiz Ediliyor...</p>
+                        <p class="text-sm text-slate-500">Gemini AI malzemeleri tarıyor</p>
+                    </div>
+
+                    <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-700">
+                        <div class="bg-orange-100 p-2 rounded-lg text-orange-500"><i
+                                class="fa-solid fa-basket-shopping"></i></div>
+                        Kiler Yönetimi
+                    </h2>
+
+                    <div class="space-y-3 mb-4">
+                        <div class="flex gap-2">
+                            <!-- Kamera Butonu -->
+                            <input type="file" id="visionInput" accept="image/*" class="hidden"
+                                onchange="handleVisionUpload(this)">
+                            <button onclick="document.getElementById('visionInput').click()"
+                                class="bg-indigo-50 text-indigo-600 border border-indigo-100 px-4 rounded-xl hover:bg-indigo-100 transition flex flex-col items-center justify-center min-w-[60px]"
+                                title="Fotoğraf Çek">
+                                <i class="fa-solid fa-camera text-xl"></i>
+                            </button>
+                            <!-- Text Input -->
+                            <input type="text" id="ingredientInput" placeholder="Malzeme (Örn: Süt)"
+                                class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm">
+                        </div>
+
+                        <div class="flex gap-2">
+                            <div class="flex-1 relative">
+                                <i class="fa-regular fa-calendar absolute left-3 top-3.5 text-slate-400"></i>
+                                <input type="date" id="expiryInput"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-600 outline-none cursor-pointer hover:bg-slate-100 transition">
+                            </div>
+                            <button onclick="handleAddIngredient()"
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 rounded-xl transition shadow-md flex items-center justify-center active:scale-95">
+                                <i class="fa-solid fa-plus fa-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="pantryList" class="flex flex-col gap-2 max-h-[350px] overflow-y-auto min-h-[50px] pr-1">
+                        <p
+                            class="text-slate-400 text-xs w-full text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            Henüz malzeme yok...</p>
+                    </div>
+                </div>
+
+                <!-- Ayarlar -->
+                <div class="glass-panel p-6 rounded-3xl shadow-sm">
+                    <h2 class="text-lg font-bold mb-3 text-slate-700 flex items-center gap-2">
+                        <div class="bg-blue-100 p-2 rounded-lg text-blue-500"><i class="fa-solid fa-sliders"></i></div>
+                        Tercihler
+                    </h2>
+                    <div class="space-y-3">
+                        <select id="dietarySelect"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 transition cursor-pointer">
+                            <option value="">Fark etmez</option>
+                            <option value="Pratik (Max 15 dk)">Hızlı & Pratik (15 dk)</option>
+                            <option value="Düşük Kalori">Düşük Kalori (Diyet)</option>
+                            <option value="Yüksek Protein">Sporcu (Yüksek Protein)</option>
+                            <option value="Vejetaryen">Vejetaryen</option>
+                            <option value="Glutensiz">Glutensiz</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Aksiyon Butonu -->
+                <button onclick="generateRecipes()" id="generateBtn"
+                    class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-5 rounded-2xl shadow-xl shadow-orange-200 transform active:scale-95 transition-all flex items-center justify-center gap-3 text-lg border-b-4 border-red-700">
+                    <span class="bg-white/20 p-2 rounded-full"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                    TARİFİ OLUŞTUR
+                </button>
+
+                <div id="errorMessage"
+                    class="hidden bg-red-50 text-red-600 p-4 rounded-xl text-sm text-center border border-red-200 font-medium">
+                </div>
+            </div>
+
+            <!-- SAĞ PANEL: Sonuçlar -->
+            <div class="md:col-span-2">
+                <!-- Karşılama Ekranı -->
+                <div id="welcomeState"
+                    class="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 rounded-3xl p-10 min-h-[500px] bg-slate-50/50">
+                    <div class="bg-white p-8 rounded-full mb-6 shadow-sm">
+                        <i class="fa-solid fa-utensils text-6xl text-slate-200"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-600">Şef Emrine Amade!</h3>
+                    <p class="text-slate-400 mt-2 text-center max-w-sm leading-relaxed">
+                        Malzemelerini gir veya fotoğrafını çek.<br>
+                        <span class="text-emerald-500 font-bold">Akıllı Asistan</span> gerisini halletsin.
+                    </p>
+                </div>
+
+                <!-- Yükleniyor -->
+                <div id="loadingState" class="hidden h-full flex flex-col items-center justify-center min-h-[500px]">
+                    <div
+                        class="loader ease-linear rounded-full border-[6px] border-t-[6px] border-slate-200 h-24 w-24 mb-8">
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-700 animate-pulse">Menü Hazırlanıyor...</h2>
+                    <div class="mt-6 space-y-3 w-full max-w-xs">
+                        <div
+                            class="flex items-center gap-3 text-slate-500 bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                            <i class="fa-solid fa-calculator text-blue-500"></i> <span>Makrolar Hesaplanıyor...</span>
+                        </div>
+                        <div
+                            class="flex items-center gap-3 text-slate-500 bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                            <i class="fa-solid fa-wine-glass text-purple-500"></i> <span>İçecekler
+                                Eşleştiriliyor...</span>
+                        </div>
+                        <div
+                            class="flex items-center gap-3 text-slate-500 bg-white p-3 rounded-xl shadow-sm border border-slate-100">
+                            <i class="fa-solid fa-magnifying-glass text-orange-500"></i> <span>Stok Kontrol
+                                Ediliyor...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarif Listesi Container -->
+                <div id="recipeContainer" class="hidden pb-10">
+                    <!-- SHUFFLE BUTONU -->
+                    <div class="flex justify-end mb-4">
+                        <button onclick="generateRecipes(true)"
+                            class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-5 py-3 rounded-2xl font-bold flex items-center gap-2 transition shadow-sm active:scale-95">
+                            <i class="fa-solid fa-shuffle"></i> Lezzetleri Karıştır
+                        </button>
+                    </div>
+
+                    <div id="recipeList" class="space-y-8"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase & Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCOPm4GZpr0V91BJ5rYu886dL3jFiNIzNA",
+            authDomain: "alnichef.firebaseapp.com",
+            projectId: "alnichef",
+            storageBucket: "alnichef.firebasestorage.app",
+            messagingSenderId: "1046030974732",
+            appId: "1:1046030974732:web:0bfbeacca904f6988e1329",
+            measurementId: "G-LNBXBTCSL2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Kullanıcı Kimliği
+        let userId = localStorage.getItem('alni_user_id');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('alni_user_id', userId);
+        }
+
+        // Global Değişkenler
+        let pantryItems = [];
+        let shoppingList = [];
+        let currentRecipeSteps = [];
+        let currentStepIndex = 0;
+
+        // Shuffle İçin Hafıza
+        let generatedRecipeTitles = [];
+
+        // Ses Tanıma
+        let recognition;
+        let isAssistantActive = false;
+
+        const GEMINI_KEYS = [
+            "AIzaSyAsEzkuOUbuSBYMgoXgJ_BHDUKD8Zgd2gs", "AIzaSyBUKUpSa6wAXz-_mUuUfbUSIu_mzhgawlM",
+            "AIzaSyDpU5yEDUbjNlM2werTRiEWI8MnLgMnlng", "AIzaSyCUm97HFDHhnx9HMROGAhUFAEjvta2J9bU",
+            "AIzaSyCqnyL_V99QKplsmYQlrUwjVXanNbYECjw", "AIzaSyDv5YJKHTgo2xwebz64k2THRQEEQd9KrPI",
+            "AIzaSyBnIVe0mqRHufAF1vgBx_jDwTt7XI9IjEs", "AIzaSyCa1AYWDxiwQByMem8QYlN1-5wgT2z8tlk",
+            "AIzaSyBFV2y8Ut0ZQQnVThUVQyA86Y1k6zopN60", "AIzaSyA3L8hUIpVy-ZCRYs1B2TVUaLXtF6WqYzg"
+        ];
+
+        // --- 1. ALIŞVERİŞ LİSTESİ & WHATSAPP ---
+        const shopListUl = document.getElementById('shoppingListUl');
+        const shopInput = document.getElementById('shopInput');
+
+        window.toggleShoppingList = () => {
+            const modal = document.getElementById('shoppingModal');
+            modal.classList.toggle('hidden');
+        }
+
+        const qShop = query(collection(db, "shoppingList"), where("userId", "==", userId));
+        onSnapshot(qShop, (snap) => {
+            shoppingList = [];
+            shopListUl.innerHTML = "";
+            snap.forEach(doc => shoppingList.push({ id: doc.id, ...doc.data() }));
+
+            // Badge
+            const badge = document.getElementById('shopCountBadge');
+            const activeCount = shoppingList.filter(i => !i.checked).length;
+            if (activeCount > 0) {
+                badge.innerText = activeCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            if (shoppingList.length === 0) shopListUl.innerHTML = '<div class="flex flex-col items-center justify-center h-40 text-slate-400"><i class="fa-solid fa-basket-shopping text-4xl mb-3 text-slate-200"></i><p class="text-sm">Listeniz boş.</p></div>';
+
+            shoppingList.forEach(item => {
+                const li = document.createElement('li');
+                li.className = `flex items-center gap-3 p-3 rounded-2xl border transition-all ${item.checked ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-200 shadow-sm'}`;
+                li.innerHTML = `
+                    <div class="relative flex items-center">
+                        <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="checkShopItem('${item.id}', this.checked)" class="w-6 h-6 accent-emerald-500 cursor-pointer z-10 opacity-0 absolute inset-0">
+                        <div class="w-6 h-6 border-2 border-slate-300 rounded-lg flex items-center justify-center transition-colors ${item.checked ? 'bg-emerald-500 border-emerald-500' : 'bg-white group-hover:border-emerald-400'}">
+                            ${item.checked ? '<i class="fa-solid fa-check text-white text-xs"></i>' : ''}
+                        </div>
+                    </div>
+                    <span class="flex-1 text-sm font-medium ${item.checked ? 'line-through text-slate-400' : 'text-slate-700'}">${item.name}</span>
+                    <button onclick="delShopItem('${item.id}')" class="text-slate-300 hover:text-red-500 p-2 transition"><i class="fa-solid fa-trash"></i></button>
+                `;
+                shopListUl.appendChild(li);
+            });
+            updateRecipeButtons();
+        });
+
+        window.addShopItem = async (val = null) => {
+            const name = val || shopInput.value.trim();
+            if (!name) return;
+            await addDoc(collection(db, "shoppingList"), { userId, name, checked: false, createdAt: new Date() });
+            if (!val) shopInput.value = "";
+        }
+        window.delShopItem = async (id) => await deleteDoc(doc(db, "shoppingList", id));
+        window.checkShopItem = async (id, status) => await updateDoc(doc(db, "shoppingList", id), { checked: status });
+
+        window.shareOnWhatsapp = () => {
+            const note = document.getElementById('whatsappNote').value.trim();
+            const activeItems = shoppingList.filter(i => !i.checked);
+
+            if (activeItems.length === 0 && !note) {
+                alert("Listeniz boş ve not yazmadınız.");
+                return;
+            }
+
+            let msg = "*🛒 Al&Ni Chef Alışveriş Listesi*\n";
+            if (note) msg += `\n📝 *Not:* ${note}\n`;
+            if (activeItems.length > 0) {
+                msg += "\n*Alınacaklar:*";
+                activeItems.forEach(item => msg += `\n- ${item.name}`);
+            }
+            msg += "\n\nBu liste *Al&Ni Smart Chef* ile oluşturuldu. 👨‍🍳";
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // --- 2. KİLER, VISION & SKT ---
+        const pantryListEl = document.getElementById('pantryList');
+        const inputEl = document.getElementById('ingredientInput');
+        const expiryEl = document.getElementById('expiryInput');
+
+        const qPantry = query(collection(db, "pantry"), where("userId", "==", userId));
+        onSnapshot(qPantry, (snapshot) => {
+            pantryItems = [];
+            pantryListEl.innerHTML = "";
+            snapshot.forEach((doc) => pantryItems.push({ id: doc.id, ...doc.data() }));
+
+            if (pantryItems.length === 0) {
+                pantryListEl.innerHTML = '<div class="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl"><i class="fa-solid fa-carrot text-slate-300 text-3xl mb-2"></i><p class="text-slate-400 text-xs">Dolabın boş görünüyor.<br>Hemen eklemeye başla!</p></div>';
+            } else {
+                pantryItems.forEach(item => {
+                    let alertHtml = "";
+                    let bgClass = "bg-white border-slate-100";
+
+                    if (item.expiry) {
+                        const daysLeft = Math.ceil((new Date(item.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+                        if (daysLeft < 0) {
+                            bgClass = "bg-red-50 border-red-200";
+                            alertHtml = `<span class="text-[10px] text-red-600 font-bold flex items-center gap-1 bg-red-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-triangle-exclamation"></i> SKT GEÇTİ</span>`;
+                        } else if (daysLeft <= 3) {
+                            bgClass = "bg-orange-50 border-orange-200";
+                            alertHtml = `<span class="text-[10px] text-orange-600 font-bold flex items-center gap-1 bg-orange-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-hourglass-half"></i> ${daysLeft} gün kaldı</span>`;
+                        } else {
+                            alertHtml = `<span class="text-[10px] text-slate-400 flex items-center gap-1"><i class="fa-regular fa-calendar"></i> ${new Date(item.expiry).toLocaleDateString('tr-TR')}</span>`;
+                        }
+                    }
+
+                    const tag = document.createElement('div');
+                    tag.className = `${bgClass} border px-4 py-3 rounded-2xl flex justify-between items-center group shadow-sm transition-all hover:shadow-md animate-fade-in`;
+                    tag.innerHTML = `
+                        <div class="flex flex-col">
+                            <span class="font-bold text-slate-700 text-sm mb-1">${item.name}</span>
+                            ${alertHtml}
+                        </div>
+                        <button class="text-slate-300 hover:text-red-500 bg-slate-50 hover:bg-red-50 p-2 rounded-lg transition" onclick="deletePantryItem('${item.id}')">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                    pantryListEl.appendChild(tag);
+                });
+            }
+        });
+
+        window.handleAddIngredient = async (nameVal = null) => {
+            const val = nameVal || inputEl.value.trim();
+            const date = expiryEl.value;
+            if (!val) return;
+            try {
+                if (!nameVal) inputEl.value = "";
+                await addDoc(collection(db, "pantry"), { name: val, expiry: date, userId: userId, createdAt: new Date() });
+            } catch (error) { console.error(error); }
+        }
+        window.deletePantryItem = async (id) => await deleteDoc(doc(db, "pantry", id));
+
+        // VISION AI
+        window.handleVisionUpload = async (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const overlay = document.getElementById('visionOverlay');
+            overlay.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64Data = reader.result.split(',')[1];
+                const mimeType = file.type;
+                const prompt = "Bu fotoğraftaki yiyecek malzemelerini tespit et. Sadece malzemelerin isimlerini Türkçe olarak, virgülle ayırarak yaz. Miktar yazma. Örn: Domates, Salatalık, Süt";
+
+                try {
+                    const resultText = await fetchGeminiVision(prompt, base64Data, mimeType);
+                    const items = resultText.split(',').map(s => s.trim());
+                    for (const item of items) {
+                        if (item.length > 2) await handleAddIngredient(item);
+                    }
+                    alert(`${items.length} malzeme başarıyla eklendi!`);
+                } catch (e) {
+                    alert("Tanımlama hatası: " + e.message);
+                } finally {
+                    overlay.classList.add('hidden');
+                    input.value = "";
+                }
+            };
+        };
+
+        // --- 3. GEMINI API ---
+        async function fetchGeminiRecipe(prompt, attempt = 0) {
+            if (attempt >= GEMINI_KEYS.length) throw new Error("Servis şu an yoğun.");
+            const randomKey = GEMINI_KEYS[Math.floor(Math.random() * GEMINI_KEYS.length)];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${randomKey}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                if (response.status === 429) return fetchGeminiRecipe(prompt, attempt + 1);
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) { return fetchGeminiRecipe(prompt, attempt + 1); }
+        }
+
+        async function fetchGeminiVision(prompt, base64Data, mimeType, attempt = 0) {
+            if (attempt >= GEMINI_KEYS.length) throw new Error("API Kotası Dolu");
+            const key = GEMINI_KEYS[Math.floor(Math.random() * GEMINI_KEYS.length)];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                { inlineData: { mimeType: mimeType, data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
+                if (response.status === 429) return fetchGeminiVision(prompt, base64Data, mimeType, attempt + 1);
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) { return fetchGeminiVision(prompt, base64Data, mimeType, attempt + 1); }
+        }
+
+        // --- 4. TARİF OLUŞTURMA & KARIŞTIR (SHUFFLE) ---
+        window.generateRecipes = async (isShuffle = false) => {
+            if (pantryItems.length === 0) { alert("Lütfen önce kilerinize malzeme ekleyin!"); return; }
+
+            document.getElementById('welcomeState').classList.add('hidden');
+            document.getElementById('recipeContainer').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('generateBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Şef Düşünüyor...';
+
+            const ingredientsList = pantryItems.map(i => {
+                const isUrgent = i.expiry && (new Date(i.expiry) - new Date()) < (3 * 86400000);
+                return isUrgent ? `${i.name} (Acil Tüket!)` : i.name;
+            }).join(", ");
+            const preference = document.getElementById('dietarySelect').value;
+
+            // Shuffle için daha önceki tarifleri hariç tutma mantığı
+            let exclusionText = "";
+            if (isShuffle && generatedRecipeTitles.length > 0) {
+                exclusionText = `LÜTFEN ŞU YEMEKLERİ ÖNERME (Daha önce önerdin): ${generatedRecipeTitles.join(", ")}. Farklı alternatifler bul.`;
+            } else if (!isShuffle) {
+                generatedRecipeTitles = []; // Reset if pure generate
+            }
+
+            const systemPrompt = `
+                Sen "Al&Ni Smart Chef"sin. Kullanıcı Malzemeleri: ${ingredientsList}. Tercih: ${preference}.
+                ${exclusionText}
+                
+                Görevin: Bu malzemelerle yapılabilecek EN İYİ tarifleri öner.
+                ÖNEMLİ: Tarif sayısını (2 ile 4 arasında) malzeme çeşitliliğine göre sen belirle.
+                
+                Kurallar:
+                1. "Acil Tüket" etiketli malzemeleri kesinlikle kullan.
+                2. Her tarif için "Food Pairing" (İçecek Eşleşmesi) yap.
+                3. Makro değerlerini (Protein/Karb/Yağ) hesapla.
+
+                ÇIKTI FORMATI (Sadece JSON Array):
+                [
+                    {
+                        "title": "Yemek Adı",
+                        "desc": "Kısa açıklama",
+                        "time": "XX dk",
+                        "difficulty": "Kolay/Orta",
+                        "calories": "XXX kcal",
+                        "macros": {"p": "20g", "c": "45g", "f": "12g"},
+                        "pairing": "Ayran",
+                        "missing": ["Eksik Varsa"],
+                        "steps": ["Adım 1", "Adım 2"]
+                    }
+                ]
+            `;
+
+            try {
+                const jsonString = await fetchGeminiRecipe(systemPrompt);
+                const cleanJson = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+                const recipes = JSON.parse(cleanJson);
+
+                // Shuffle hafızası için başlıkları kaydet
+                recipes.forEach(r => generatedRecipeTitles.push(r.title));
+
+                renderRecipes(recipes);
+            } catch (error) {
+                document.getElementById('errorMessage').innerText = "Hata: " + error.message;
+                document.getElementById('errorMessage').classList.remove('hidden');
+            } finally {
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('generateBtn').innerHTML = '<span class="bg-white/20 p-2 rounded-full"><i class="fa-solid fa-wand-magic-sparkles"></i></span> TARİFİ OLUŞTUR';
+            }
+        };
+
+        function renderRecipes(recipes) {
+            const listEl = document.getElementById('recipeList');
+            listEl.innerHTML = "";
+            recipes.forEach((recipe, index) => {
+                const diffColor = recipe.difficulty === 'Kolay' ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100';
+                const stepsStr = JSON.stringify(recipe.steps).replace(/"/g, '&quot;');
+
+                const html = `
+                    <div class="glass-panel rounded-[2rem] overflow-hidden shadow-xl border border-slate-200 fade-in" style="animation-delay: ${index * 150}ms">
+                        <div class="p-6 md:p-8">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-2xl font-bold text-slate-800 leading-tight">${recipe.title}</h3>
+                                    <p class="text-slate-500 text-sm mt-1 line-clamp-2">${recipe.desc}</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${diffColor}">${recipe.difficulty}</span>
+                            </div>
+
+                            <div class="grid grid-cols-4 gap-3 mb-6">
+                                <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100">
+                                    <i class="fa-regular fa-clock text-emerald-500 block mb-1 text-lg"></i> <span class="text-xs font-bold text-slate-700">${recipe.time}</span>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-2xl text-center border border-slate-100">
+                                    <i class="fa-solid fa-fire text-orange-500 block mb-1 text-lg"></i> <span class="text-xs font-bold text-slate-700">${recipe.calories}</span>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-2xl text-center col-span-2 border border-slate-100 flex flex-col justify-center">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Makrolar (P/K/Y)</span>
+                                    <div class="flex justify-center gap-2 text-xs font-bold text-slate-700 mt-1">
+                                        <span class="text-blue-500">${recipe.macros?.p || '?'}</span> / 
+                                        <span class="text-yellow-600">${recipe.macros?.c || '?'}</span> / 
+                                        <span class="text-red-500">${recipe.macros?.f || '?'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-5 bg-gradient-to-r from-violet-50 to-fuchsia-50 p-4 rounded-2xl border border-violet-100 flex items-center gap-4">
+                                <div class="bg-white p-3 rounded-full text-violet-500 shadow-sm"><i class="fa-solid fa-wine-glass text-xl"></i></div>
+                                <div>
+                                    <p class="text-[10px] text-violet-400 font-bold uppercase tracking-wider">Şefin İçecek Önerisi</p>
+                                    <p class="text-sm text-violet-800 font-bold">${recipe.pairing || 'Su'}</p>
+                                </div>
+                            </div>
+
+                            ${recipe.missing && recipe.missing.length > 0 ? `
+                                <div class="mb-5 bg-red-50 p-4 rounded-2xl border border-red-100">
+                                    <p class="text-xs text-red-700 font-bold mb-3 flex items-center gap-2"><i class="fa-solid fa-cart-plus"></i> Eksik Malzemeler (Ekle):</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${recipe.missing.map(m => `
+                                            <button 
+                                                class="shop-btn bg-white border border-red-200 text-red-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition shadow-sm active:scale-95"
+                                                data-item="${m}"
+                                                onclick="addShopItem('${m}')">
+                                                + ${m}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="space-y-4 mb-6">
+                                <h4 class="font-bold text-slate-700 text-sm uppercase border-b border-slate-100 pb-2 flex items-center gap-2"><i class="fa-solid fa-list-ol text-emerald-500"></i> Hazırlanışı</h4>
+                                <ol class="text-sm space-y-3 text-slate-600 list-decimal pl-4 marker:text-emerald-600 marker:font-bold">
+                                    ${recipe.steps.map(s => `<li class="pl-1 leading-relaxed">${s}</li>`).join('')}
+                                </ol>
+                            </div>
+
+                            <button onclick="startCookingMode(${stepsStr})" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-2xl flex items-center justify-center gap-3 font-bold transition shadow-lg shadow-slate-300 group">
+                                <span class="bg-slate-700 group-hover:bg-slate-600 p-2 rounded-full transition"><i class="fa-solid fa-headset"></i></span>
+                                Asistan Modunu Başlat
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listEl.insertAdjacentHTML('beforeend', html);
+            });
+            document.getElementById('recipeContainer').classList.remove('hidden');
+            updateRecipeButtons();
+        }
+
+        function updateRecipeButtons() {
+            const btns = document.querySelectorAll('.shop-btn');
+            btns.forEach(btn => {
+                const itemName = btn.getAttribute('data-item');
+                const exists = shoppingList.some(i => i.name === itemName);
+                if (exists) {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Eklendi';
+                    btn.classList.add('opacity-50', 'line-through', 'cursor-not-allowed', 'bg-red-50');
+                    btn.disabled = true;
+                } else {
+                    btn.innerHTML = `+ ${itemName}`;
+                    btn.classList.remove('opacity-50', 'line-through', 'cursor-not-allowed', 'bg-red-50');
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // --- 5. GELİŞMİŞ ASİSTAN MODU (AUTO-RESTART DÖNGÜSÜ İLE) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        // 1. Tanıma Motorunu Başlat
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // Sürekli değil, parça parça alıp yeniden başlatacağız (Daha stabil)
+            recognition.lang = 'tr-TR';
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                // Görsel Feedback
+                document.getElementById('micStatusText').innerText = "DİNLİYOR...";
+                document.getElementById('micStatusText').classList.remove('text-red-500');
+                document.getElementById('micStatusText').classList.add('text-emerald-400');
+            };
+
+            recognition.onend = () => {
+                // Eğer mod hala açıksa, mikrofonu tekrar başlat (Sonsuz Döngü)
+                if (isAssistantActive) {
+                    try { recognition.start(); } catch (e) { }
+                } else {
+                    document.getElementById('micStatusText').innerText = "DURDU";
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                console.log("Duyulan:", transcript); // Debug için
+
+                // Komut Eşleştirme (Daha esnek)
+                if (transcript.includes('sonraki') || transcript.includes('ileri') || transcript.includes('geç') || transcript.includes('diğer')) {
+                    nextStep();
+                }
+                else if (transcript.includes('önceki') || transcript.includes('geri') || transcript.includes('dön')) {
+                    prevStep();
+                }
+                else if (transcript.includes('tekrar') || transcript.includes('oku') || transcript.includes('söyle')) {
+                    speakCurrentStep();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.log("Ses hatası:", event.error);
+                // Hata olsa bile yeniden başlatmayı dene (eğer mod açıksa)
+                if (event.error === 'no-speech' && isAssistantActive) {
+                    // Sessizlik olduysa, loop zaten onend ile dönecek
+                }
+            };
+        }
+
+        window.startCookingMode = (steps) => {
+            currentRecipeSteps = steps;
+            currentStepIndex = 0;
+            isAssistantActive = true; // Modu aktif işaretle
+
+            document.getElementById('cookingMode').classList.remove('hidden');
+            updateStepDisplay();
+
+            // İlk konuşma
+            speakText("Asistan modu aktif. Hazır olduğunda ilk adımı okuyorum.");
+            setTimeout(() => speakCurrentStep(), 3000);
+
+            // Mikrofonu Başlat
+            if (recognition) { try { recognition.start(); } catch (e) { } }
+        }
+
+        window.closeCookingMode = () => {
+            isAssistantActive = false; // Modu kapat
+            window.speechSynthesis.cancel();
+            document.getElementById('cookingMode').classList.add('hidden');
+            if (recognition) { recognition.stop(); }
+        }
+
+        window.nextStep = () => {
+            if (currentStepIndex < currentRecipeSteps.length - 1) {
+                currentStepIndex++;
+                updateStepDisplay();
+                speakCurrentStep();
+            } else {
+                speakText("Tebrikler şef! Yemek hazır. Afiyet olsun.");
+            }
+        }
+
+        window.prevStep = () => {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                updateStepDisplay();
+                speakCurrentStep();
+            }
+        }
+
+        window.speakCurrentStep = () => {
+            window.speechSynthesis.cancel();
+            speakText(currentRecipeSteps[currentStepIndex]);
+        }
+
+        function updateStepDisplay() {
+            document.getElementById('stepCounter').innerText = `Adım ${currentStepIndex + 1} / ${currentRecipeSteps.length}`;
+            document.getElementById('stepText').innerText = currentRecipeSteps[currentStepIndex];
+            const percentage = ((currentStepIndex + 1) / currentRecipeSteps.length) * 100;
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+        }
+
+        function speakText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'tr-TR';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+
+    </script>
+</body>
+
+</html>
